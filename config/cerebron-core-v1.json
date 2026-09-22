@@ -1,0 +1,46 @@
+{
+  "schema": "cerebron-core-f76-v1",
+  "farm_id": 76,
+  "identity": "CEREBRON",
+  "status": "BOOTSTRAP_REAL_REPO",
+  "role": "central_orchestrator_and_chatgpt_interface",
+  "message_contract": {
+    "required": [
+      "sender",
+      "recipient",
+      "task_id",
+      "thread_id",
+      "checkpoint",
+      "content",
+      "evidence",
+      "dependencies",
+      "status"
+    ]
+  },
+  "ai_routes": [
+    "SAPHEA",
+    "SPIRALION",
+    "ETHERION",
+    "HYPERION",
+    "AFAH"
+  ],
+  "gates": [
+    "AUDIT",
+    "COUNTER_AUDIT",
+    "F72_REALITY_EVIDENCE",
+    "AFAH_FINAL_FUSION"
+  ],
+  "accounting": {
+    "rule": "count only real attempted executions with trace",
+    "planned": true,
+    "attempted": true,
+    "successful": true,
+    "failed": true
+  },
+  "separation": {
+    "deterministic_control_plane": "required",
+    "generative_model": "separate",
+    "reason": "model output must not falsify execution accounting"
+  },
+  "claim_scope": "Repository and orchestration contract only until runtime/inference is executed and verified."
+}
