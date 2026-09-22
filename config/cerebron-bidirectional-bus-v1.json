@@ -1,0 +1,92 @@
+{
+  "schema": "cerebron-bidirectional-bus-v1",
+  "farm_id": 76,
+  "status": "ACTIVE_CONTRACT_RUNTIME_NOT_YET_E2E_VERIFIED",
+  "purpose": "persistent message bridge between ChatGPT, CEREBRON, five AI identities and farms",
+  "message": {
+    "required": [
+      "message_id",
+      "thread_id",
+      "task_id",
+      "checkpoint",
+      "sender",
+      "recipient",
+      "content_sha256",
+      "evidence",
+      "dependencies",
+      "status"
+    ],
+    "statuses": [
+      "QUEUED",
+      "PLANNED",
+      "ATTEMPTED",
+      "SUCCEEDED",
+      "FAILED",
+      "AUDIT_REQUIRED",
+      "FUSED",
+      "RETURN_READY"
+    ]
+  },
+  "routes": {
+    "CHATGPT": [
+      "CEREBRON"
+    ],
+    "CEREBRON": [
+      "SAPHEA",
+      "SPIRALION",
+      "ETHERION",
+      "HYPERION",
+      "AFAH",
+      "FARMS",
+      "CHATGPT"
+    ],
+    "SAPHEA": [
+      "CEREBRON"
+    ],
+    "SPIRALION": [
+      "CEREBRON"
+    ],
+    "ETHERION": [
+      "CEREBRON"
+    ],
+    "HYPERION": [
+      "CEREBRON"
+    ],
+    "AFAH": [
+      "CEREBRON"
+    ]
+  },
+  "gates": [
+    "DEPENDENCY_CHECK",
+    "AUDIT",
+    "COUNTER_AUDIT",
+    "F72_REALITY_EVIDENCE",
+    "AFAH_FINAL_FUSION"
+  ],
+  "accounting": {
+    "planned": "may be created by router",
+    "attempted": "requires execution trace",
+    "succeeded": "requires successful trace and nonempty output",
+    "failed": "requires trace or explicit infrastructure failure",
+    "prohibition": "never infer execution count from plan or role count"
+  },
+  "persistence": {
+    "control_plane": "GitHub",
+    "memory_plane": "HF_PRIVATE_MEMORY_WHEN_AUTHORIZED",
+    "checkpoint_required": true,
+    "hash_required": true
+  },
+  "return_contract": {
+    "recipient": "CHATGPT",
+    "required": [
+      "task_id",
+      "thread_id",
+      "checkpoint",
+      "validated_output",
+      "open_residuals",
+      "execution_accounting",
+      "artifact_refs"
+    ]
+  },
+  "claim_scope": "Contract is real and versioned; end-to-end bidirectional runtime remains to be executed and verified."
+}
