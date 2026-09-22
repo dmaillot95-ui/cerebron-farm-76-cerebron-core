@@ -1,0 +1,80 @@
+name: CEREBRON Five-AI Routed E2E Canary
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/cerebron-five-ai-e2e-canary.yml'
+permissions:
+  contents: read
+jobs:
+  routed-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install --quiet "transformers>=4.53,<5" accelerate safetensors sentencepiece
+      - name: Execute five real routed inference calls and AFAH fusion
+        env:
+          MODEL_ID: HuggingFaceTB/SmolLM3-3B
+          REVISION: a07cc9a04f16550a088caea529712d1d335b0ac1
+        run: |
+          mkdir -p out
+          python - <<'PY'
+          import os,json,time,hashlib,uuid
+          from pathlib import Path
+          import torch
+          from transformers import AutoTokenizer,AutoModelForCausalLM
+          mid,rev=os.environ["MODEL_ID"],os.environ["REVISION"]
+          tok=AutoTokenizer.from_pretrained(mid,revision=rev)
+          mdl=AutoModelForCausalLM.from_pretrained(mid,revision=rev,torch_dtype=torch.float32,low_cpu_mem_usage=True)
+          task="Assess whether a simulation-only engineering conclusion, supported by several agents sharing one source, is validated. State what evidence is still required."
+          policies={
+            "SAPHEA":"Execute carefully. Separate calculation, simulation, test and proof. Give traceable evidence requirements.",
+            "SPIRALION":"Reason cumulatively from verified facts. Preserve dependencies, contradictions and open residuals.",
+            "ETHERION":"Act as difficult R&D specialist. Expose assumptions and propose discriminating experiments.",
+            "HYPERION":"Explore alternative explanations and hidden assumptions. Do not validate unsupported claims.",
+            "AFAH":"Audit evidence and dependencies. Same-source agreement is not independent evidence. Fuse only supported claims."
+          }
+          def infer(sys,user,maxn=220):
+            msgs=[{"role":"system","content":sys},{"role":"user","content":user}]
+            p=tok.apply_chat_template(msgs,tokenize=False,add_generation_prompt=True,enable_thinking=False) if getattr(tok,"chat_template",None) else sys+"\nUSER: "+user+"\nASSISTANT:"
+            x=tok(p,return_tensors="pt"); t=time.time()
+            with torch.no_grad(): y=mdl.generate(input_ids=x["input_ids"],attention_mask=x.get("attention_mask"),max_new_tokens=maxn,do_sample=False,pad_token_id=tok.eos_token_id)
+            a=tok.decode(y[0][x["input_ids"].shape[1]:],skip_special_tokens=True).strip()
+            return a,round((time.time()-t)*1000)
+          thread=str(uuid.uuid4()); outputs=[]; attempted=successful=failed=0
+          for name in ["SAPHEA","SPIRALION","ETHERION","HYPERION"]:
+            attempted+=1
+            try:
+              a,ms=infer(policies[name],task)
+              ok=bool(a) and "<think>" not in a.lower()
+              successful+=int(ok); failed+=int(not ok)
+              outputs.append({"identity":name,"status":"SUCCEEDED" if ok else "FAILED","answer":a,
+                "answer_sha256":hashlib.sha256(a.encode()).hexdigest(),"latency_ms":ms})
+            except Exception as e:
+              failed+=1; outputs.append({"identity":name,"status":"FAILED","error":type(e).__name__})
+          packet=json.dumps(outputs,ensure_ascii=False)
+          attempted+=1
+          try:
+            fusion,ms=infer(policies["AFAH"],"TASK:\n"+task+"\n\nUNTRUSTED SPECIALIST OUTPUTS:\n"+packet+"\n\nAudit dependencies, preserve uncertainty, and produce final fusion.")
+            ok=bool(fusion) and "<think>" not in fusion.lower()
+            successful+=int(ok); failed+=int(not ok)
+            outputs.append({"identity":"AFAH","status":"SUCCEEDED" if ok else "FAILED","answer":fusion,
+              "answer_sha256":hashlib.sha256(fusion.encode()).hexdigest(),"latency_ms":ms})
+          except Exception as e:
+            failed+=1; outputs.append({"identity":"AFAH","status":"FAILED","error":type(e).__name__})
+          receipt={"schema":"cerebron-five-ai-routed-e2e-v1","farm_id":76,"thread_id":thread,
+            "model_id":mid,"revision":rev,"task_sha256":hashlib.sha256(task.encode()).hexdigest(),
+            "execution_accounting":{"planned":5,"attempted":attempted,"successful":successful,"failed":failed},
+            "outputs":outputs,"return_to":"CEREBRON",
+            "claim_scope":"Five real base-model inference attempts under distinct CEREBRON policies on one runner; not five independent trained neural models and not independent evidence merely by count."}
+          Path("out/five-ai-e2e-receipt.json").write_text(json.dumps(receipt,ensure_ascii=False,indent=2)+"\n")
+          print(json.dumps(receipt["execution_accounting"]))
+          if attempted!=5 or failed: raise SystemExit(2)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cerebron-five-ai-e2e-receipt
+          path: out/five-ai-e2e-receipt.json
+          retention-days: 14
